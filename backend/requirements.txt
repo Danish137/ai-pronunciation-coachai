@@ -4,4 +4,5 @@ sqlalchemy==2.0.42
 pydantic-settings==2.10.1
 python-multipart==0.0.20
 httpx==0.28.1
+pronouncing==0.2.0
 azure-cognitiveservices-speech>=1.38.0

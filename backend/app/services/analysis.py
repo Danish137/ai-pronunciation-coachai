@@ -1,6 +1,5 @@
 import hashlib
 import json
-import math
 import statistics
 from dataclasses import dataclass
 
@@ -22,6 +21,48 @@ from ..schemas.assessment import (
 )
 
 settings = get_settings()
+
+ARPABET_TO_IPA = {
+    "AA": "ɑ",
+    "AE": "æ",
+    "AH": "ʌ",
+    "AO": "ɔ",
+    "AW": "aʊ",
+    "AY": "aɪ",
+    "B": "b",
+    "CH": "tʃ",
+    "D": "d",
+    "DH": "ð",
+    "EH": "ɛ",
+    "ER": "ɝ",
+    "EY": "eɪ",
+    "F": "f",
+    "G": "ɡ",
+    "HH": "h",
+    "IH": "ɪ",
+    "IY": "i",
+    "JH": "dʒ",
+    "K": "k",
+    "L": "l",
+    "M": "m",
+    "N": "n",
+    "NG": "ŋ",
+    "OW": "oʊ",
+    "OY": "ɔɪ",
+    "P": "p",
+    "R": "r",
+    "S": "s",
+    "SH": "ʃ",
+    "T": "t",
+    "TH": "θ",
+    "UH": "ʊ",
+    "UW": "u",
+    "V": "v",
+    "W": "w",
+    "Y": "j",
+    "Z": "z",
+    "ZH": "ʒ",
+}
 
 
 @dataclass
@@ -189,6 +230,7 @@ class AssessmentService:
             if phoneme.get("PronunciationAssessment", {}).get("AccuracyScore", 100) < 75 and phoneme.get("Phoneme")
         ]
         phoneme_hint = ", ".join(phoneme_names[:3]) if phoneme_names else None
+        pronunciation_meta = self._word_pronunciation_meta(word_payload.get("Word", ""))
         return WordFeedback(
             word=(word_payload.get("Word", "") or "").strip(),
             score=score,
@@ -201,6 +243,11 @@ class AssessmentService:
             confidence=self._confidence_from_word(score, error_type, phoneme_hint),
             phoneme_hint=phoneme_hint,
             practice_priority=self._priority_from_score(score),
+            ipa=pronunciation_meta["ipa"],
+            syllables=pronunciation_meta["syllables"],
+            stress_syllable=pronunciation_meta["stress_syllable"],
+            native_pronunciation=pronunciation_meta["native_pronunciation"],
+            slow_pronunciation=pronunciation_meta["slow_pronunciation"],
         )
 
     async def _compose_response(self, raw: RawAssessment) -> AssessmentResponse:
@@ -270,7 +317,7 @@ class AssessmentService:
             ],
         }
         prompt = (
-            "You are a premium pronunciation coach inside a product similar to Grammarly and Duolingo.\n"
+            "You are an elite English pronunciation coach.\n"
             "Use only the provided structured speech data. Never invent pronunciation mistakes.\n"
             "Return JSON with keys: overview, coach_summary, top_issues, practice_plan, insights, word_overrides.\n"
             "Constraints:\n"
@@ -279,8 +326,9 @@ class AssessmentService:
             "- top_issues max 5 items, sorted by coaching priority.\n"
             "- Each word_override must target an existing flagged word by word + start_ms.\n"
             "- Avoid repeated phrases like 'repeat more slowly'. Be specific about stress, endings, consonants, rhythm, or clarity.\n"
-            "- If confidence is low, say you cannot confidently diagnose the exact issue.\n"
+            "- If confidence is low, stay conservative and describe only the reliable observation.\n"
             "- practice_plan.sentences must create three natural sentences using difficult words.\n"
+            "- Keep copy sounding like a human language coach, not product marketing.\n"
             f"\nStructured input:\n{json.dumps(payload)}"
         )
 
@@ -447,6 +495,11 @@ class AssessmentService:
                     confidence=word.confidence,
                     start_ms=word.start_ms,
                     end_ms=word.end_ms,
+                    ipa=word.ipa,
+                    syllables=word.syllables,
+                    stress_syllable=word.stress_syllable,
+                    native_pronunciation=word.native_pronunciation,
+                    slow_pronunciation=word.slow_pronunciation,
                 )
             )
         return issues
@@ -459,6 +512,10 @@ class AssessmentService:
                 reason=word.issue,
                 drill=self._drill_for_word(word),
                 syllable_hint=self._syllable_hint(word.word),
+                ipa=word.ipa,
+                stress_syllable=word.stress_syllable,
+                native_pronunciation=word.native_pronunciation,
+                slow_pronunciation=word.slow_pronunciation,
                 repetitions=5,
                 estimated_gain=2 if word.practice_priority == "high" else 1,
             )
@@ -576,8 +633,8 @@ class AssessmentService:
         return "medium"
 
     def _base_issue_from_error(self, error_type: str, score: float, phoneme_hint: str | None) -> str:
-        if score < 55:
-            return "Unable to confidently evaluate the exact issue, but this word was much less clear than the rest of the sample."
+        if score < 55 and not phoneme_hint and error_type in {"None", ""}:
+            return "This word stood out as less clear than the rest of the sample, so it should be one of your first practice targets."
         if error_type == "Omission":
             return "Part of this word sounded incomplete, so the ending or an internal consonant may have dropped out."
         if error_type == "Insertion":
@@ -689,6 +746,91 @@ class AssessmentService:
             return clean
         midpoint = max(2, len(clean) // 2)
         return f"{clean[:midpoint]}-{clean[midpoint:]}"
+
+    def _word_pronunciation_meta(self, word: str) -> dict[str, object]:
+        clean = "".join(char for char in word.lower() if char.isalpha())
+        fallback = {
+            "ipa": None,
+            "syllables": self._heuristic_syllables(clean),
+            "stress_syllable": None,
+            "native_pronunciation": word,
+            "slow_pronunciation": " - ".join(self._heuristic_syllables(clean)) if clean else word,
+        }
+        if not clean:
+            return fallback
+
+        try:
+            import pronouncing  # type: ignore[import-not-found]
+        except ImportError:
+            return fallback
+
+        phones = pronouncing.phones_for_word(clean)
+        if not phones:
+            return fallback
+
+        selected = phones[0]
+        syllables = pronouncing.syllable_count(selected)
+        stresses = pronouncing.stresses(selected)
+        stress_syllable = next((index + 1 for index, digit in enumerate(stresses) if digit == "1"), None)
+        split = self._syllabify_arpabet(selected.split())
+        ipa = self._arpabet_to_ipa(selected)
+        return {
+            "ipa": ipa,
+            "syllables": split or fallback["syllables"],
+            "stress_syllable": stress_syllable if stress_syllable and stress_syllable <= max(len(split), syllables or 1) else None,
+            "native_pronunciation": word,
+            "slow_pronunciation": " - ".join(split) if split else fallback["slow_pronunciation"],
+        }
+
+    def _heuristic_syllables(self, word: str) -> list[str]:
+        if not word:
+            return []
+        vowels = "aeiouy"
+        pieces: list[str] = []
+        current = ""
+        seen_vowel = False
+        for index, char in enumerate(word):
+            current += char
+            if char in vowels:
+                seen_vowel = True
+                next_char = word[index + 1] if index + 1 < len(word) else ""
+                if next_char not in vowels:
+                    pieces.append(current)
+                    current = ""
+        if current:
+            if pieces:
+                pieces[-1] += current
+            else:
+                pieces.append(current)
+        return pieces if seen_vowel else [word]
+
+    def _syllabify_arpabet(self, phones: list[str]) -> list[str]:
+        syllables: list[list[str]] = []
+        current: list[str] = []
+        vowel_seen = False
+        for phone in phones:
+            current.append(phone)
+            if any(char.isdigit() for char in phone):
+                vowel_seen = True
+            elif vowel_seen and phone in {"P", "T", "K", "B", "D", "G", "F", "V", "S", "Z", "SH", "CH", "JH", "M", "N", "NG", "L", "R"}:
+                syllables.append(current[:-1] or current)
+                current = [phone]
+                vowel_seen = False
+        if current:
+            syllables.append(current)
+        rendered: list[str] = []
+        for syllable in syllables:
+            text = "".join(self._arpabet_phone_to_ipa(phone) for phone in syllable if self._arpabet_phone_to_ipa(phone))
+            if text:
+                rendered.append(text)
+        return rendered
+
+    def _arpabet_to_ipa(self, phones: str) -> str:
+        return "".join(self._arpabet_phone_to_ipa(phone) for phone in phones.split())
+
+    def _arpabet_phone_to_ipa(self, phone: str) -> str:
+        clean_phone = "".join(char for char in phone if not char.isdigit())
+        return ARPABET_TO_IPA.get(clean_phone, "")
 
     def _practice_sentences(self, words: list[str]) -> list[PracticeSentence]:
         unique_words = [word for word in words if word]

@@ -7,14 +7,14 @@ type PracticePanelProps = {
 };
 
 export function PracticePanel({ practicePlan }: PracticePanelProps) {
-  const [completedWords, setCompletedWords] = useState<Record<string, boolean>>({});
+  const [repetitionCounts, setRepetitionCounts] = useState<Record<string, number>>({});
 
-  function speakWord(word: string) {
+  function speak(text: string, rate: number) {
     if (!("speechSynthesis" in window)) {
       return;
     }
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.rate = 0.78;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = rate;
     utterance.lang = "en-US";
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
@@ -22,52 +22,68 @@ export function PracticePanel({ practicePlan }: PracticePanelProps) {
 
   return (
     <section className="practice-card">
-      <div className="section-copy">
-        <span className="section-kicker">Today's practice</span>
-        <h3>{practicePlan.today_focus}</h3>
-        <p>
-          Estimated score if fixed: <strong>{practicePlan.estimated_score_if_fixed}</strong>
-          {" "}({practicePlan.estimated_gain >= 0 ? `+${practicePlan.estimated_gain}` : practicePlan.estimated_gain})
-        </p>
+      <div className="section-header">
+        <div>
+          <span className="small-label">Practice session</span>
+          <h3>{practicePlan.today_focus}</h3>
+          <p>Improving these words should noticeably raise your overall pronunciation quality.</p>
+        </div>
       </div>
 
-      <div className="practice-words">
-        {practicePlan.words.map((word) => (
-          <article key={word.word} className={`practice-word ${completedWords[word.word] ? "completed" : ""}`}>
-            <div className="practice-word-top">
-              <div>
-                <strong>{word.word}</strong>
-                <p>{word.syllable_hint}</p>
+      <div className="practice-word-list">
+        {practicePlan.words.map((word) => {
+          const count = repetitionCounts[word.word] ?? 0;
+          return (
+            <article key={word.word} className="practice-word">
+              <div className="practice-word-top">
+                <div>
+                  <strong>{word.word}</strong>
+                  <p>{word.ipa ?? word.syllable_hint}</p>
+                </div>
+                {word.stress_syllable ? <span>Stress {word.stress_syllable}</span> : null}
               </div>
-              <span>+{word.estimated_gain}</span>
-            </div>
-            <p>{word.reason}</p>
-            <p><strong>Drill:</strong> {word.drill}</p>
-            <div className="button-row">
-              <button className="ghost-button" type="button" onClick={() => speakWord(word.word)}>
-                Hear pronunciation
-              </button>
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => setCompletedWords((current) => ({ ...current, [word.word]: !current[word.word] }))}
-              >
-                {completedWords[word.word] ? "Practiced" : `Repeat x${word.repetitions}`}
-              </button>
-            </div>
-          </article>
-        ))}
+              <p>{word.reason}</p>
+              <details className="practice-details">
+                <summary>Show practice</summary>
+                <div className="practice-detail-copy">
+                  <p><strong>How to practice:</strong> {word.drill}</p>
+                </div>
+              </details>
+              <div className="button-row">
+                <button className="ghost-button" type="button" onClick={() => speak(word.native_pronunciation ?? word.word, 0.92)}>
+                  Native pronunciation
+                </button>
+                <button className="ghost-button" type="button" onClick={() => speak(word.slow_pronunciation ?? word.word, 0.62)}>
+                  Slow pronunciation
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => setRepetitionCounts((current) => ({ ...current, [word.word]: Math.min(word.repetitions, count + 1) }))}
+                >
+                  Repeat
+                </button>
+              </div>
+              <div className="repeat-track" aria-label={`${count} of ${word.repetitions} repetitions completed`}>
+                {Array.from({ length: word.repetitions }).map((_, index) => (
+                  <span key={`${word.word}-${index}`} className={`repeat-dot ${index < count ? "filled" : ""}`} />
+                ))}
+              </div>
+            </article>
+          );
+        })}
       </div>
 
       <div className="practice-sentences">
-        <div className="section-copy">
-          <span className="section-kicker">Practice sentences</span>
-          <h4>Transfer the improvement into connected speech</h4>
+        <div className="section-header">
+          <div>
+            <span className="small-label">Practice sentences</span>
+            <h4>Use the words in natural spoken English</h4>
+          </div>
         </div>
         {practicePlan.sentences.map((sentence) => (
-          <article key={sentence.sentence} className="sentence-card">
+          <article key={sentence.sentence} className="sentence-row">
             <p>{sentence.sentence}</p>
-            <small>Focus words: {sentence.focus_words.join(", ")}</small>
           </article>
         ))}
       </div>

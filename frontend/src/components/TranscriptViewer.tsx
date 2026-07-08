@@ -42,11 +42,24 @@ export function TranscriptViewer({ words, selectedStartMs, onSelectWord }: Trans
 
   const selectedWord = filteredWords.find((word) => word.start_ms === selectedStartMs) ?? words.find((word) => word.start_ms === selectedStartMs) ?? null;
 
+  function speak(text: string, rate: number) {
+    if (!("speechSynthesis" in window)) {
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = rate;
+    utterance.lang = "en-US";
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  }
+
   return (
     <section className="transcript-card">
-      <div className="section-copy">
-        <span className="section-kicker">Transcript coach</span>
-        <h3>Review the words that matter</h3>
+      <div className="section-header">
+        <div>
+          <span className="small-label">Interactive transcript</span>
+          <h3>Tap any word to understand what needs work</h3>
+        </div>
       </div>
 
       <div className="transcript-toolbar">
@@ -67,7 +80,7 @@ export function TranscriptViewer({ words, selectedStartMs, onSelectWord }: Trans
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search transcript"
+          placeholder="Search a word"
           aria-label="Search transcript"
         />
       </div>
@@ -89,24 +102,36 @@ export function TranscriptViewer({ words, selectedStartMs, onSelectWord }: Trans
         <article className={`word-drawer ${selectedWord.status}`}>
           <div className="word-drawer-header">
             <div>
-              <span className="section-kicker">Selected word</span>
+              <span className="small-label">Word detail</span>
               <h4>{selectedWord.word}</h4>
             </div>
             <strong>{Math.round(selectedWord.score)}/100</strong>
           </div>
-          <p>{selectedWord.issue}</p>
-          <p><strong>How to improve:</strong> {selectedWord.suggestion}</p>
-          <div className="word-drawer-meta">
-            <span>{selectedWord.practice_priority} priority</span>
-            <span>{selectedWord.confidence} confidence</span>
-            {selectedWord.phoneme_hint ? <span>Watch {selectedWord.phoneme_hint}</span> : null}
+          <div className="word-detail-grid">
+            <p><strong>Detected weakness:</strong> {selectedWord.issue}</p>
+            <p><strong>Practice suggestion:</strong> {selectedWord.suggestion}</p>
+            {selectedWord.ipa ? <p><strong>Expected pronunciation:</strong> {selectedWord.ipa}</p> : null}
+            {selectedWord.syllables.length ? <p><strong>Syllables:</strong> {selectedWord.syllables.join(" • ")}</p> : null}
+            {selectedWord.stress_syllable ? <p><strong>Stress:</strong> syllable {selectedWord.stress_syllable}</p> : null}
+            {selectedWord.phoneme_hint ? <p><strong>Sounds to watch:</strong> {selectedWord.phoneme_hint}</p> : null}
+          </div>
+          <div className="button-row">
+            <button className="ghost-button" type="button" onClick={() => speak(selectedWord.native_pronunciation ?? selectedWord.word, 0.92)}>
+              Native pronunciation
+            </button>
+            <button className="ghost-button" type="button" onClick={() => speak(selectedWord.slow_pronunciation ?? selectedWord.word, 0.62)}>
+              Slow pronunciation
+            </button>
+            <button className="secondary-button" type="button" onClick={() => onSelectWord(selectedWord)}>
+              Retry this word
+            </button>
           </div>
         </article>
       ) : null}
 
       <div className="collapse-block">
         <button className="ghost-button" type="button" onClick={() => setDetailsExpanded((value) => !value)}>
-          {detailsExpanded ? "Collapse detailed word analysis" : "Expand detailed word analysis"}
+          {detailsExpanded ? "Hide detailed analytics" : "Show detailed analytics"}
         </button>
         {detailsExpanded ? (
           <div className="word-analysis-grid">

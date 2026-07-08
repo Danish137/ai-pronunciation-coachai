@@ -9,26 +9,16 @@ export function ProgressPipeline({ steps, stepIndex, visible }: ProgressPipeline
     return null;
   }
 
+  const progress = ((stepIndex + 1) / steps.length) * 100;
+
   return (
     <section className="progress-card" aria-live="polite">
-      <div className="section-copy">
-        <span className="section-kicker">AI Coach is working</span>
-        <h3>Turning your recording into a practice plan</h3>
+      <div className="progress-copy">
+        <strong>{steps[stepIndex]}</strong>
+        <p>Please wait a moment while we prepare your coaching report.</p>
       </div>
-      <div className="progress-track" />
-      <div className="progress-steps">
-        {steps.map((step, index) => {
-          const state = index < stepIndex ? "done" : index === stepIndex ? "active" : "idle";
-          return (
-            <div key={step} className={`progress-step ${state}`}>
-              <span className="progress-dot" />
-              <div>
-                <strong>{step}</strong>
-                <p>{index === stepIndex ? "In progress now" : index < stepIndex ? "Completed" : "Queued next"}</p>
-              </div>
-            </div>
-          );
-        })}
+      <div className="progress-bar-shell" aria-hidden="true">
+        <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
       </div>
     </section>
   );

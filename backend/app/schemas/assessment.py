@@ -16,6 +16,11 @@ class WordFeedback(BaseModel):
     confidence: Literal["high", "medium", "low"] = "medium"
     phoneme_hint: str | None = None
     practice_priority: Literal["high", "medium", "low"] = "medium"
+    ipa: str | None = None
+    syllables: list[str] = []
+    stress_syllable: int | None = None
+    native_pronunciation: str | None = None
+    slow_pronunciation: str | None = None
 
 
 class CoachOverview(BaseModel):
@@ -49,6 +54,11 @@ class PriorityIssue(BaseModel):
     confidence: Literal["high", "medium", "low"]
     start_ms: int = Field(ge=0, default=0)
     end_ms: int = Field(ge=0, default=0)
+    ipa: str | None = None
+    syllables: list[str] = []
+    stress_syllable: int | None = None
+    native_pronunciation: str | None = None
+    slow_pronunciation: str | None = None
 
 
 class PracticeWord(BaseModel):
@@ -56,6 +66,10 @@ class PracticeWord(BaseModel):
     reason: str
     drill: str
     syllable_hint: str
+    ipa: str | None = None
+    stress_syllable: int | None = None
+    native_pronunciation: str | None = None
+    slow_pronunciation: str | None = None
     repetitions: int = Field(ge=1, le=10)
     estimated_gain: int = Field(ge=0, le=10)
 

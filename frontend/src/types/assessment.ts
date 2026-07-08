@@ -13,6 +13,11 @@ export type WordFeedback = {
   confidence: "high" | "medium" | "low";
   phoneme_hint: string | null;
   practice_priority: "high" | "medium" | "low";
+  ipa: string | null;
+  syllables: string[];
+  stress_syllable: number | null;
+  native_pronunciation: string | null;
+  slow_pronunciation: string | null;
 };
 
 export type CoachOverview = {
@@ -46,6 +51,11 @@ export type PriorityIssue = {
   confidence: "high" | "medium" | "low";
   start_ms: number;
   end_ms: number;
+  ipa: string | null;
+  syllables: string[];
+  stress_syllable: number | null;
+  native_pronunciation: string | null;
+  slow_pronunciation: string | null;
 };
 
 export type PracticeWord = {
@@ -53,6 +63,10 @@ export type PracticeWord = {
   reason: string;
   drill: string;
   syllable_hint: string;
+  ipa: string | null;
+  stress_syllable: number | null;
+  native_pronunciation: string | null;
+  slow_pronunciation: string | null;
   repetitions: number;
   estimated_gain: number;
 };

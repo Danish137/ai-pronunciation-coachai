@@ -7,21 +7,20 @@ type MetricsPanelProps = {
 export function MetricsPanel({ metrics }: MetricsPanelProps) {
   return (
     <section className="metrics-card">
-      <div className="section-copy">
-        <span className="section-kicker">Performance metrics</span>
-        <h3>Numbers only where they help coaching</h3>
+      <div className="section-header">
+        <div>
+          <span className="small-label">Detailed analytics</span>
+          <h3>Compact score breakdown</h3>
+        </div>
       </div>
-      <div className="metrics-grid">
+      <div className="metrics-list">
         {metrics.map((metric) => (
-          <article key={metric.key} className="metric-card">
-            <div className="metric-topline">
-              <div>
-                <strong>{metric.label}</strong>
-                <p>{metric.band}</p>
-              </div>
-              <span>{Math.round(metric.score)}</span>
+          <article key={metric.key} className="metric-row">
+            <div>
+              <strong>{metric.label}</strong>
+              <p>{metric.explanation}</p>
             </div>
-            <p>{metric.explanation}</p>
+            <span>{Math.round(metric.score)}</span>
           </article>
         ))}
       </div>

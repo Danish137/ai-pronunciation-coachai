@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 
 const PROCESS_STEPS = [
-  "Uploading audio...",
-  "Normalizing audio...",
-  "Analyzing pronunciation...",
-  "Generating personalized coaching...",
-  "Done",
+  "Uploading recording...",
+  "Understanding your speech...",
+  "Finding pronunciation mistakes...",
+  "Preparing your coaching plan...",
+  "Almost ready...",
 ] as const;
 
 export function useProcessingPipeline(active: boolean) {
@@ -19,9 +19,10 @@ export function useProcessingPipeline(active: boolean) {
 
     setStepIndex(0);
     const timers = [
-      window.setTimeout(() => setStepIndex(1), 700),
-      window.setTimeout(() => setStepIndex(2), 1800),
-      window.setTimeout(() => setStepIndex(3), 3600),
+      window.setTimeout(() => setStepIndex(1), 650),
+      window.setTimeout(() => setStepIndex(2), 1650),
+      window.setTimeout(() => setStepIndex(3), 2900),
+      window.setTimeout(() => setStepIndex(4), 4300),
     ];
 
     return () => {

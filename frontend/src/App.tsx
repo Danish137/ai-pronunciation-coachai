@@ -25,7 +25,6 @@ function App() {
   const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
   const [sourceType, setSourceType] = useState<SourceType>("upload");
   const [consentAccepted, setConsentAccepted] = useState(false);
-  const [referenceText, setReferenceText] = useState("");
   const [error, setError] = useState("");
   const [activeAttempt, setActiveAttempt] = useState<Assessment | null>(null);
   const [selectedWordStartMs, setSelectedWordStartMs] = useState<number | null>(null);
@@ -33,6 +32,7 @@ function App() {
   const historyQuery = useAssessmentHistory();
   const deleteAttemptMutation = useDeleteAttempt();
   const deleteHistoryMutation = useDeleteHistory();
+
   const assessmentMutation = useMutation({
     mutationFn: createAssessment,
     onSuccess: (attempt) => {
@@ -111,7 +111,7 @@ function App() {
       file: selectedFile,
       sourceType,
       consentAccepted,
-      referenceText,
+      referenceText: "",
     });
   }
 
@@ -123,21 +123,6 @@ function App() {
 
   return (
     <div className="app-shell">
-      <header className="compact-hero">
-        <div>
-          <span className="brand-mark">PronounceAI Coach</span>
-          <h1>Find the exact words to fix next.</h1>
-          <p>
-            This experience is designed like a coach, not a dashboard. Analyze your speech, surface the real blockers, then move
-            straight into practice.
-          </p>
-        </div>
-        <div className="hero-side">
-          <span>Azure speech assessment inside</span>
-          <span>Premium coaching layer</span>
-        </div>
-      </header>
-
       <main className="coach-layout">
         <UploadCard
           acceptedTypes={ACCEPTED_AUDIO_TYPES}
@@ -149,9 +134,7 @@ function App() {
             void handleFileChange(file, type);
           }}
           onSubmit={handleSubmit}
-          referenceText={referenceText}
           selectedFileLabel={selectedFileLabel}
-          onReferenceTextChange={setReferenceText}
           canSubmit={canSubmit}
         />
 
@@ -169,8 +152,13 @@ function App() {
             <CoachSummaryPanel summary={currentAttempt.coach_summary} />
             <TranscriptViewer words={currentAttempt.word_feedback} selectedStartMs={selectedWordStartMs} onSelectWord={handleSelectWord} />
             <PracticePanel practicePlan={currentAttempt.practice_plan} />
-            <InsightsPanel insights={currentAttempt.insights} />
-            <MetricsPanel metrics={currentAttempt.metrics} />
+            <details className="analytics-collapse">
+              <summary>Show detailed analytics</summary>
+              <div className="analytics-stack">
+                <InsightsPanel insights={currentAttempt.insights.slice(0, 2)} />
+                <MetricsPanel metrics={currentAttempt.metrics} />
+              </div>
+            </details>
             <HistoryPanel
               attempts={historyQuery.data ?? []}
               activeAttemptId={currentAttempt.id}
@@ -187,12 +175,9 @@ function App() {
           </div>
         ) : (
           <section className="empty-result-card">
-            <span className="section-kicker">No result yet</span>
-            <h2>Your first coaching session will appear here.</h2>
-            <p>
-              You will see the overall result first, then the biggest pronunciation problems, personalized coaching, transcript
-              highlights, practice drills, and finally metrics and history.
-            </p>
+            <div className="empty-illustration" aria-hidden="true" />
+            <h2>Record your first pronunciation sample</h2>
+            <p>We will show your score, the five most important words to fix, a highlighted transcript, and a short practice plan.</p>
           </section>
         )}
       </main>
