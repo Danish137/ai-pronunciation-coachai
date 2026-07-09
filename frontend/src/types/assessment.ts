@@ -9,6 +9,7 @@ export type WordFeedback = {
   suggestion: string;
   start_ms: number;
   end_ms: number;
+  duration_ms: number;
   error_type: string;
   confidence: "high" | "medium" | "low";
   phoneme_hint: string | null;
@@ -18,6 +19,11 @@ export type WordFeedback = {
   stress_syllable: number | null;
   native_pronunciation: string | null;
   slow_pronunciation: string | null;
+  affected_phonemes?: string[];
+  affected_syllable?: string | null;
+  pronunciation_explanation?: string | null;
+  detected_issue_categories?: string[];
+  evidence_summary?: string | null;
 };
 
 export type CoachOverview = {

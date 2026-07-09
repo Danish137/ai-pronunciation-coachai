@@ -1,7 +1,27 @@
 from datetime import datetime
+from typing import Any
 from typing import Literal
 
 from pydantic import BaseModel, Field
+
+
+class PhonemeFeedback(BaseModel):
+    phoneme: str
+    ipa: str | None = None
+    accuracy_score: float = Field(ge=0, le=100)
+    offset_ms: int = Field(ge=0, default=0)
+    duration_ms: int = Field(ge=0, default=0)
+    error_type: str = "None"
+
+
+class SyllableFeedback(BaseModel):
+    syllable: str
+    grapheme: str | None = None
+    accuracy_score: float = Field(ge=0, le=100)
+    offset_ms: int = Field(ge=0, default=0)
+    duration_ms: int = Field(ge=0, default=0)
+    stress_level: str | None = None
+    phonemes: list[PhonemeFeedback] = []
 
 
 class WordFeedback(BaseModel):
@@ -12,6 +32,7 @@ class WordFeedback(BaseModel):
     suggestion: str
     start_ms: int = Field(ge=0, default=0)
     end_ms: int = Field(ge=0, default=0)
+    duration_ms: int = Field(ge=0, default=0)
     error_type: str = "None"
     confidence: Literal["high", "medium", "low"] = "medium"
     phoneme_hint: str | None = None
@@ -21,6 +42,20 @@ class WordFeedback(BaseModel):
     stress_syllable: int | None = None
     native_pronunciation: str | None = None
     slow_pronunciation: str | None = None
+    affected_phonemes: list[str] = []
+    affected_syllable: str | None = None
+    pronunciation_explanation: str | None = None
+    detected_issue_categories: list[str] = []
+    phoneme_details: list[PhonemeFeedback] = []
+    syllable_details: list[SyllableFeedback] = []
+    azure_confidence_score: float | None = Field(default=None, ge=0, le=100)
+    evidence_summary: str | None = None
+    prosody_score: float | None = Field(default=None, ge=0, le=100)
+    syllable_accuracy_score: float | None = Field(default=None, ge=0, le=100)
+    completeness_score: float | None = Field(default=None, ge=0, le=100)
+    expected_stress_pattern: str | None = None
+    detected_stress_pattern: str | None = None
+    raw_breakdown: dict[str, Any] = {}
 
 
 class CoachOverview(BaseModel):
@@ -101,6 +136,22 @@ class CoachInsight(BaseModel):
     description: str
 
 
+class AzureDiagnosticsSummary(BaseModel):
+    reference_text_used: str
+    recognized_text: str
+    overall_scores: dict[str, float]
+    prosody: dict[str, Any]
+    flagged_word_count: int = Field(ge=0)
+    issue_category_counts: dict[str, int] = {}
+    segment_count: int = Field(ge=0)
+    word_count: int = Field(ge=0)
+    patterns: list[str] = []
+    assessment_metadata: dict[str, Any] = {}
+    flagged_words: list[dict[str, Any]] = []
+    transcript_words: list[dict[str, Any]] = []
+    segments: list[dict[str, Any]] = []
+
+
 class AssessmentResponse(BaseModel):
     overall_score: float = Field(ge=0, le=100)
     accuracy_score: float = Field(ge=0, le=100)
@@ -119,6 +170,8 @@ class AssessmentResponse(BaseModel):
     metrics: list[MetricInsight]
     insights: list[CoachInsight]
     provider_mode: Literal["mock", "azure"] = "mock"
+    raw_azure_json: dict | list | None = None
+    azure_diagnostics: AzureDiagnosticsSummary | None = None
 
 
 class HistoryItem(AssessmentResponse):
@@ -130,3 +183,9 @@ class HistoryItem(AssessmentResponse):
 
 class DeleteResponse(BaseModel):
     deleted: int
+
+
+class RawAzurePayloadResponse(BaseModel):
+    attempt_id: int
+    provider_mode: Literal["mock", "azure"]
+    raw_azure_json: dict | list | None

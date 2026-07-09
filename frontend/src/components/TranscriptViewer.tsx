@@ -42,6 +42,35 @@ export function TranscriptViewer({ words, selectedStartMs, onSelectWord }: Trans
 
   const selectedWord = filteredWords.find((word) => word.start_ms === selectedStartMs) ?? words.find((word) => word.start_ms === selectedStartMs) ?? null;
 
+  function explanationForWord(word: WordFeedback) {
+    if (word.pronunciation_explanation) {
+      return word.pronunciation_explanation;
+    }
+    if (word.evidence_summary) {
+      return word.evidence_summary;
+    }
+    if (word.issue) {
+      return word.issue;
+    }
+    if (word.affected_syllable && word.affected_phonemes?.length) {
+      return `The ${word.affected_syllable} part of ${word.word} was less stable, especially around ${word.affected_phonemes.slice(0, 2).join(" and ")}.`;
+    }
+    return `This word was understandable, but it did not sound as clear or consistent as your stronger words.`;
+  }
+
+  function suggestionForWord(word: WordFeedback) {
+    if (word.suggestion) {
+      return word.suggestion;
+    }
+    if (word.affected_syllable) {
+      return `Practice the ${word.affected_syllable} part of ${word.word} slowly, then say the full word again in a short phrase.`;
+    }
+    if (word.affected_phonemes?.length) {
+      return `Repeat ${word.word} while emphasizing ${word.affected_phonemes.slice(0, 2).join(" and ")}, then place it back into a sentence.`;
+    }
+    return `Try ${word.word} once slowly, once naturally, and once in a sentence so the sound stays consistent.`;
+  }
+
   function speak(text: string, rate: number) {
     if (!("speechSynthesis" in window)) {
       return;
@@ -108,8 +137,8 @@ export function TranscriptViewer({ words, selectedStartMs, onSelectWord }: Trans
             <strong>{Math.round(selectedWord.score)}/100</strong>
           </div>
           <div className="word-detail-grid">
-            <p><strong>Detected weakness:</strong> {selectedWord.issue}</p>
-            <p><strong>Practice suggestion:</strong> {selectedWord.suggestion}</p>
+            <p><strong>Detected weakness:</strong> {explanationForWord(selectedWord)}</p>
+            <p><strong>Practice suggestion:</strong> {suggestionForWord(selectedWord)}</p>
             {selectedWord.ipa ? <p><strong>Expected pronunciation:</strong> {selectedWord.ipa}</p> : null}
             {selectedWord.syllables.length ? <p><strong>Syllables:</strong> {selectedWord.syllables.join(" • ")}</p> : null}
             {selectedWord.stress_syllable ? <p><strong>Stress:</strong> syllable {selectedWord.stress_syllable}</p> : null}
@@ -141,8 +170,8 @@ export function TranscriptViewer({ words, selectedStartMs, onSelectWord }: Trans
                   <strong>{word.word}</strong>
                   <span>{Math.round(word.score)}</span>
                 </div>
-                <p>{word.issue}</p>
-                <small>{word.suggestion}</small>
+                <p>{explanationForWord(word)}</p>
+                <small>{suggestionForWord(word)}</small>
               </article>
             ))}
           </div>

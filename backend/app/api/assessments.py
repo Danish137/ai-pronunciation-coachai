@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile, status
@@ -5,11 +6,12 @@ from sqlalchemy.orm import Session
 
 from ..core.database import get_db
 from ..repositories.attempts import AttemptRepository
-from ..schemas.assessment import DeleteResponse, HistoryItem
+from ..schemas.assessment import DeleteResponse, HistoryItem, RawAzurePayloadResponse
 from ..services.analysis import AssessmentService, ProviderInputs
 from ..services.audio import persist_and_prepare_audio
 
 router = APIRouter(prefix="/assessment", tags=["assessment"])
+logger = logging.getLogger("pronounceai.api")
 
 
 def require_session_id(x_session_id: Annotated[str | None, Header()] = None) -> str:
@@ -44,7 +46,9 @@ async def create_assessment(
         prepared_audio.cleanup()
 
     repo = AttemptRepository(db)
-    return repo.create(assessment, session_id=session_id, source_type=source_type, reference_text=reference_text)
+    history_item = repo.create(assessment, session_id=session_id, source_type=source_type, reference_text=reference_text)
+    logger.warning("API_RESPONSE_JSON %s", history_item.model_dump_json())
+    return history_item
 
 
 @router.get("/history", response_model=list[HistoryItem])
@@ -60,6 +64,15 @@ def get_attempt(attempt_id: int, session_id: str = Depends(require_session_id), 
     if not attempt:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assessment not found.")
     return attempt
+
+
+@router.get("/{attempt_id}/raw-azure", response_model=RawAzurePayloadResponse)
+def get_raw_azure_payload(attempt_id: int, session_id: str = Depends(require_session_id), db: Session = Depends(get_db)):
+    repo = AttemptRepository(db)
+    payload = repo.get_raw_azure_payload(session_id, attempt_id)
+    if not payload:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assessment not found.")
+    return payload
 
 
 @router.delete("/{attempt_id}", response_model=DeleteResponse)

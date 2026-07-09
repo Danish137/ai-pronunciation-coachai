@@ -1,92 +1,65 @@
-import { useState } from "react";
-
+import React from "react";
 import type { PracticePlan } from "../types/assessment";
 
 type PracticePanelProps = {
   practicePlan: PracticePlan;
 };
 
-export function PracticePanel({ practicePlan }: PracticePanelProps) {
-  const [repetitionCounts, setRepetitionCounts] = useState<Record<string, number>>({});
+function speak(text: string, rate: number) {
+  if (!("speechSynthesis" in window)) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = rate;
+  u.lang = "en-US";
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(u);
+}
 
-  function speak(text: string, rate: number) {
-    if (!("speechSynthesis" in window)) {
-      return;
-    }
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = rate;
-    utterance.lang = "en-US";
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-  }
+export function PracticePanel({ practicePlan }: PracticePanelProps) {
+  if (!practicePlan.sentences.length) return null;
 
   return (
     <section className="practice-card">
       <div className="section-header">
         <div>
-          <span className="small-label">Practice session</span>
-          <h3>{practicePlan.today_focus}</h3>
-          <p>Improving these words should noticeably raise your overall pronunciation quality.</p>
+          <span className="small-label">Practice sentences</span>
+          <h3>Use your words in natural context</h3>
+          <p>Ordered from simpler to more complex so you build real fluency, not just repetition.</p>
         </div>
       </div>
 
-      <div className="practice-word-list">
-        {practicePlan.words.map((word) => {
-          const count = repetitionCounts[word.word] ?? 0;
-          return (
-            <article key={word.word} className="practice-word">
-              <div className="practice-word-top">
-                <div>
-                  <strong>{word.word}</strong>
-                  <p>{word.ipa ?? word.syllable_hint}</p>
-                </div>
-                {word.stress_syllable ? <span>Stress {word.stress_syllable}</span> : null}
-              </div>
-              <p>{word.reason}</p>
-              <details className="practice-details">
-                <summary>Show practice</summary>
-                <div className="practice-detail-copy">
-                  <p><strong>How to practice:</strong> {word.drill}</p>
-                </div>
-              </details>
-              <div className="button-row">
-                <button className="ghost-button" type="button" onClick={() => speak(word.native_pronunciation ?? word.word, 0.92)}>
-                  Native pronunciation
-                </button>
-                <button className="ghost-button" type="button" onClick={() => speak(word.slow_pronunciation ?? word.word, 0.62)}>
-                  Slow pronunciation
-                </button>
-                <button
-                  className="secondary-button"
-                  type="button"
-                  onClick={() => setRepetitionCounts((current) => ({ ...current, [word.word]: Math.min(word.repetitions, count + 1) }))}
-                >
-                  Repeat
-                </button>
-              </div>
-              <div className="repeat-track" aria-label={`${count} of ${word.repetitions} repetitions completed`}>
-                {Array.from({ length: word.repetitions }).map((_, index) => (
-                  <span key={`${word.word}-${index}`} className={`repeat-dot ${index < count ? "filled" : ""}`} />
-                ))}
-              </div>
-            </article>
-          );
-        })}
-      </div>
-
-      <div className="practice-sentences">
-        <div className="section-header">
-          <div>
-            <span className="small-label">Practice sentences</span>
-            <h4>Use the words in natural spoken English</h4>
-          </div>
-        </div>
+      <ol className="sentence-list">
         {practicePlan.sentences.map((sentence) => (
-          <article key={sentence.sentence} className="sentence-row">
-            <p>{sentence.sentence}</p>
-          </article>
+          <li key={sentence.sentence} className="sentence-item">
+            <div className="sentence-body">
+              <p className="sentence-text">
+                {sentence.focus_words.length
+                  ? highlightFocusWords(sentence.sentence, sentence.focus_words)
+                  : sentence.sentence}
+              </p>
+              <div className="sentence-actions">
+                <button className="ghost-button" type="button" onClick={() => speak(sentence.sentence, 0.92)}>Hear it</button>
+                <button className="ghost-button" type="button" onClick={() => speak(sentence.sentence, 0.6)}>Slow</button>
+              </div>
+            </div>
+          </li>
         ))}
-      </div>
+      </ol>
     </section>
   );
 }
+
+function highlightFocusWords(sentence: string, focusWords: string[]): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let remaining = sentence;
+  let key = 0;
+  for (const fw of focusWords) {
+    const idx = remaining.toLowerCase().indexOf(fw.toLowerCase());
+    if (idx === -1) continue;
+    if (idx > 0) parts.push(<span key={key++}>{remaining.slice(0, idx)}</span>);
+    parts.push(<mark key={key++} className="focus-word">{remaining.slice(idx, idx + fw.length)}</mark>);
+    remaining = remaining.slice(idx + fw.length);
+  }
+  if (remaining) parts.push(<span key={key++}>{remaining}</span>);
+  return parts.length ? parts : [<span key={0}>{sentence}</span>];
+}
+

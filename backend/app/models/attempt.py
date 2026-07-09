@@ -25,4 +25,5 @@ class Attempt(Base):
     provider_mode: Mapped[str] = mapped_column(String(16), default="mock")
     word_feedback_json: Mapped[str] = mapped_column(Text)
     result_payload_json: Mapped[str] = mapped_column(Text, default="")
+    raw_azure_json: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)

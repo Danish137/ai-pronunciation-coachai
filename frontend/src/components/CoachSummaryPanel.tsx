@@ -5,40 +5,46 @@ type CoachSummaryPanelProps = {
 };
 
 export function CoachSummaryPanel({ summary }: CoachSummaryPanelProps) {
+  // Build a coherent paragraph from the available fields
+  const parts: string[] = [];
+  if (summary.summary) parts.push(summary.summary);
+  if (summary.advice && summary.advice !== summary.summary) parts.push(summary.advice);
+
+  const paragraph = parts.join(" ");
+
   return (
     <section className="coach-summary-card">
       <div className="summary-heading">
-        <span className="small-label">Coach's note</span>
-        <h3>What this recording says about your speech</h3>
-        <p>{summary.summary}</p>
+        <span className="small-label">AI Coach</span>
+        <h3>What your coach noticed</h3>
       </div>
 
-      <div className="summary-columns">
-        <div>
-          <strong>Strongest areas</strong>
-          <ul>
-            {summary.strengths.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-        <div>
-          <strong>Main weaknesses</strong>
-          <ul>
-            {summary.weaknesses.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
+      {paragraph ? <p className="coach-paragraph">{paragraph}</p> : null}
 
-      <div className="summary-note">
-        <div>
+      {summary.repeated_issue ? (
+        <div className="coach-pattern">
           <span className="small-label">Repeated pattern</span>
-          <strong>{summary.repeated_issue}</strong>
+          <p>{summary.repeated_issue}</p>
         </div>
-        <p>{summary.advice}</p>
-      </div>
+      ) : null}
+
+      {summary.strengths.length > 0 || summary.weaknesses.length > 0 ? (
+        <div className="summary-columns">
+          {summary.strengths.length > 0 ? (
+            <div>
+              <strong>Strengths</strong>
+              <ul>{summary.strengths.map((s) => <li key={s}>{s}</li>)}</ul>
+            </div>
+          ) : null}
+          {summary.weaknesses.length > 0 ? (
+            <div>
+              <strong>To improve</strong>
+              <ul>{summary.weaknesses.map((s) => <li key={s}>{s}</li>)}</ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }
+

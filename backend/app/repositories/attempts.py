@@ -1,4 +1,5 @@
 import json
+import logging
 
 from sqlalchemy import delete, desc, select
 from sqlalchemy.orm import Session
@@ -15,8 +16,11 @@ from ..schemas.assessment import (
     PracticeSentence,
     PracticeWord,
     PriorityIssue,
+    RawAzurePayloadResponse,
     WordFeedback,
 )
+
+logger = logging.getLogger("pronounceai.azure")
 
 
 class AttemptRepository:
@@ -46,10 +50,13 @@ class AttemptRepository:
             provider_mode=assessment.provider_mode,
             word_feedback_json=json.dumps([item.model_dump() for item in assessment.word_feedback]),
             result_payload_json=assessment.model_dump_json(),
+            raw_azure_json=json.dumps(assessment.raw_azure_json) if assessment.raw_azure_json is not None else "",
         )
         self.db.add(attempt)
         self.db.commit()
         self.db.refresh(attempt)
+        if attempt.provider_mode == "azure" and attempt.raw_azure_json:
+            logger.warning("Raw Azure JSON for assessment %s: %s", attempt.id, attempt.raw_azure_json)
         return HistoryItem(**assessment.model_dump(), id=attempt.id, source_type=source_type, reference_text=reference_text, created_at=attempt.created_at)
 
     def list_for_session(self, session_id: str) -> list[HistoryItem]:
@@ -72,6 +79,18 @@ class AttemptRepository:
         result = self.db.execute(stmt)
         self.db.commit()
         return result.rowcount or 0
+
+    def get_raw_azure_payload(self, session_id: str, attempt_id: int) -> RawAzurePayloadResponse | None:
+        stmt = select(Attempt).where(Attempt.session_id == session_id, Attempt.id == attempt_id)
+        attempt = self.db.scalars(stmt).first()
+        if not attempt:
+            return None
+        payload = json.loads(attempt.raw_azure_json) if attempt.raw_azure_json else None
+        return RawAzurePayloadResponse(
+            attempt_id=attempt.id,
+            provider_mode=attempt.provider_mode or "mock",
+            raw_azure_json=payload,
+        )
 
     def _to_history_item(self, attempt: Attempt) -> HistoryItem:
         if attempt.result_payload_json:

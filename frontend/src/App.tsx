@@ -4,8 +4,6 @@ import axios from "axios";
 
 import { CoachSummaryPanel } from "./components/CoachSummaryPanel";
 import { HistoryPanel } from "./components/HistoryPanel";
-import { InsightsPanel } from "./components/InsightsPanel";
-import { MetricsPanel } from "./components/MetricsPanel";
 import { PracticePanel } from "./components/PracticePanel";
 import { ProgressPipeline } from "./components/ProgressPipeline";
 import { ResultHeader } from "./components/ResultHeader";
@@ -36,6 +34,7 @@ function App() {
   const assessmentMutation = useMutation({
     mutationFn: createAssessment,
     onSuccess: (attempt) => {
+      console.debug("Assessment mutation success", attempt);
       startTransition(() => {
         setActiveAttempt(attempt);
         setSelectedWordStartMs(attempt.top_issues[0]?.start_ms ?? attempt.word_feedback[0]?.start_ms ?? null);
@@ -55,6 +54,7 @@ function App() {
 
   const pipeline = useProcessingPipeline(assessmentMutation.isPending);
   const currentAttempt = activeAttempt ?? historyQuery.data?.[0] ?? null;
+  console.debug("Current attempt for render", currentAttempt);
 
   const selectedFileLabel = useMemo(() => {
     if (!selectedFile || selectedDuration === null) {
@@ -77,13 +77,20 @@ function App() {
     return Math.round(currentAttempt.overall_score - previousAttempt.overall_score);
   }, [currentAttempt, historyQuery.data]);
 
-  async function handleFileChange(file: File | null, nextSourceType: SourceType) {
+  async function handleFileChange(file: File | null, nextSourceType: SourceType, knownDuration?: number) {
     setError("");
     setSourceType(nextSourceType);
     setSelectedFile(file);
     setSelectedDuration(null);
 
     if (!file) {
+      return;
+    }
+
+    // Recordings already validated inside Recorder.tsx — trust the elapsed seconds directly
+    // because webm blobs from MediaRecorder have Infinity duration metadata.
+    if (knownDuration !== undefined) {
+      setSelectedDuration(knownDuration);
       return;
     }
 
@@ -130,35 +137,27 @@ function App() {
           error={error}
           isSubmitting={assessmentMutation.isPending}
           onConsentChange={setConsentAccepted}
-          onFileChange={(file, type) => {
-            void handleFileChange(file, type);
+          onFileChange={(file, type, knownDuration) => {
+            void handleFileChange(file, type, knownDuration);
           }}
           onSubmit={handleSubmit}
           selectedFileLabel={selectedFileLabel}
           canSubmit={canSubmit}
         />
 
-        <ProgressPipeline steps={pipeline.steps} stepIndex={pipeline.stepIndex} visible={assessmentMutation.isPending} />
+        <ProgressPipeline steps={pipeline.steps} stepIndex={pipeline.stepIndex} progressPct={pipeline.progressPct} visible={assessmentMutation.isPending} />
 
         {currentAttempt ? (
           <div className="results-stack">
             <ResultHeader assessment={currentAttempt} improvementDelta={improvementDelta} />
             <TopIssuesSection
               issues={currentAttempt.top_issues}
-              onSelectWord={(startMs) => {
-                setSelectedWordStartMs(startMs);
-              }}
+              practicePlan={currentAttempt.practice_plan}
+              onSelectWord={(startMs) => setSelectedWordStartMs(startMs)}
             />
-            <CoachSummaryPanel summary={currentAttempt.coach_summary} />
             <TranscriptViewer words={currentAttempt.word_feedback} selectedStartMs={selectedWordStartMs} onSelectWord={handleSelectWord} />
+            <CoachSummaryPanel summary={currentAttempt.coach_summary} />
             <PracticePanel practicePlan={currentAttempt.practice_plan} />
-            <details className="analytics-collapse">
-              <summary>Show detailed analytics</summary>
-              <div className="analytics-stack">
-                <InsightsPanel insights={currentAttempt.insights.slice(0, 2)} />
-                <MetricsPanel metrics={currentAttempt.metrics} />
-              </div>
-            </details>
             <HistoryPanel
               attempts={historyQuery.data ?? []}
               activeAttemptId={currentAttempt.id}

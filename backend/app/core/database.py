@@ -61,3 +61,5 @@ def create_tables() -> None:
             connection.execute(text("ALTER TABLE attempts ADD COLUMN duration_seconds FLOAT DEFAULT 0"))
         if "result_payload_json" not in columns:
             connection.execute(text("ALTER TABLE attempts ADD COLUMN result_payload_json TEXT DEFAULT ''"))
+        if "raw_azure_json" not in columns:
+            connection.execute(text("ALTER TABLE attempts ADD COLUMN raw_azure_json TEXT DEFAULT ''"))

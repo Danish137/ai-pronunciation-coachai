@@ -7,7 +7,7 @@ type UploadCardProps = {
   error: string;
   isSubmitting: boolean;
   onConsentChange: (value: boolean) => void;
-  onFileChange: (file: File | null, sourceType: SourceType) => void;
+  onFileChange: (file: File | null, sourceType: SourceType, knownDuration?: number) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   selectedFileLabel: string | null;
   canSubmit: boolean;
@@ -28,7 +28,7 @@ export function UploadCard({
     <section className="intake-card">
       <div className="intro-copy">
         <h1>Improve your English pronunciation</h1>
-        <p>Upload or record a 30 to 45 second sample and receive personalized coaching.</p>
+        <p>Upload or record a natural 30 to 45 second sample and receive focused, evidence-based coaching.</p>
       </div>
 
       <div className="intake-rules" aria-label="Recording rules">
@@ -54,8 +54,8 @@ export function UploadCard({
           </label>
 
           <Recorder
-            onReady={(file) => {
-              onFileChange(file, "recording");
+            onReady={(file, durationSeconds) => {
+              onFileChange(file, "recording", durationSeconds);
             }}
           />
         </div>
@@ -68,7 +68,7 @@ export function UploadCard({
         <div className="submit-row">
           <div className="selected-file-copy">
             <strong>{selectedFileLabel ?? "Choose or record a valid sample to begin."}</strong>
-            <p>Analysis unlocks once the sample is in range and consent is checked.</p>
+            <p>Analysis unlocks as soon as the sample is in the 30 to 45 second range and consent is checked.</p>
           </div>
           <button className="primary-button" disabled={!canSubmit || isSubmitting}>
             {isSubmitting ? "Analyzing..." : "Analyze pronunciation"}

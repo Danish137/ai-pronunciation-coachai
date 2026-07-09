@@ -1,25 +1,37 @@
+import type { PipelineStep } from "../hooks/useProcessingPipeline";
+
 type ProgressPipelineProps = {
-  steps: readonly string[];
+  steps: readonly PipelineStep[];
   stepIndex: number;
+  progressPct: number;
   visible: boolean;
 };
 
-export function ProgressPipeline({ steps, stepIndex, visible }: ProgressPipelineProps) {
-  if (!visible) {
-    return null;
-  }
+export function ProgressPipeline({ steps, stepIndex, progressPct, visible }: ProgressPipelineProps) {
+  if (!visible) return null;
 
-  const progress = ((stepIndex + 1) / steps.length) * 100;
+  const current = steps[stepIndex];
 
   return (
     <section className="progress-card" aria-live="polite">
-      <div className="progress-copy">
-        <strong>{steps[stepIndex]}</strong>
-        <p>Please wait a moment while we prepare your coaching report.</p>
+      <div className="progress-milestones">
+        {steps.map((step, i) => (
+          <div
+            key={step.label}
+            className={`milestone ${i < stepIndex ? "done" : i === stepIndex ? "active" : ""}`}
+          >
+            <span className="milestone-dot" />
+            <span className="milestone-label">{step.label}</span>
+          </div>
+        ))}
       </div>
       <div className="progress-bar-shell" aria-hidden="true">
-        <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
+        <div
+          className="progress-bar-fill"
+          style={{ width: `${progressPct}%`, transition: "width 0.8s ease" }}
+        />
       </div>
+      <p className="progress-current-label">{current?.label ?? "Processing…"}</p>
     </section>
   );
 }
