@@ -9,6 +9,32 @@ from .config import get_settings
 
 settings = get_settings()
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DATA_DIR = Path("/data")
+
+
+def _ensure_data_dir() -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _sqlite_path_from_url(database_url: str) -> Path | None:
+    if not database_url.startswith("sqlite"):
+        return None
+    url = make_url(database_url)
+    raw_path = url.database
+    if not raw_path or raw_path == ":memory:":
+        return None
+
+    cleaned_path = raw_path.lstrip("/") if raw_path.startswith("/./") else raw_path
+    db_path = Path(cleaned_path)
+
+    # Support absolute container paths like /data/pronounceai.db.
+    if raw_path.startswith("/") and not db_path.is_absolute():
+        db_path = Path(raw_path)
+
+    if not db_path.is_absolute():
+        db_path = (PROJECT_ROOT / db_path).resolve()
+
+    return db_path
 
 
 def normalize_database_url(database_url: str) -> str:
@@ -20,16 +46,30 @@ def normalize_database_url(database_url: str) -> str:
     if not raw_path or raw_path == ":memory:":
         return database_url
 
-    # SQLite URLs like sqlite:///./backend/data/app.db arrive as ./backend/data/app.db
-    # while some Windows parsing paths may have an extra leading slash. Normalize both.
-    cleaned_path = raw_path.lstrip("/") if raw_path.startswith("/./") else raw_path
-    db_path = Path(cleaned_path)
-    if not db_path.is_absolute():
-        db_path = (PROJECT_ROOT / db_path).resolve()
+    # Preserve POSIX-style absolute paths such as /data/pronounceai.db
+    # so container deployments keep their expected mount path semantics.
+    if raw_path.startswith("/") and not raw_path.startswith("/./"):
+        Path(raw_path).parent.mkdir(parents=True, exist_ok=True)
+        return f"sqlite:///{raw_path}"
+
+    db_path = _sqlite_path_from_url(database_url)
+    if db_path is None:
+        return database_url
 
     db_path.parent.mkdir(parents=True, exist_ok=True)
     return f"sqlite:///{db_path.as_posix()}"
 
+
+def resolved_database_url() -> str:
+    return normalized_database_url
+
+
+def resolved_database_path() -> str:
+    db_path = _sqlite_path_from_url(normalized_database_url)
+    return str(db_path) if db_path else "non-sqlite database"
+
+
+_ensure_data_dir()
 normalized_database_url = normalize_database_url(settings.database_url)
 connect_args = {"check_same_thread": False} if normalized_database_url.startswith("sqlite") else {}
 

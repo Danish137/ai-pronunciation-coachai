@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173"
+    cors_origins: str = "*"
 
     database_url: str = "sqlite:///./backend/pronounceai.db"
     max_audio_mb: int = 20
@@ -37,7 +37,8 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins_list(self) -> list[str]:
-        return [item.strip() for item in self.cors_origins.split(",") if item.strip()]
+        values = [item.strip() for item in self.cors_origins.split(",") if item.strip()]
+        return values or ["*"]
 
 
 @lru_cache

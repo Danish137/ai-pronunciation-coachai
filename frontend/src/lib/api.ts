@@ -3,8 +3,14 @@ import axios from "axios";
 import { getSessionId } from "./session";
 import type { Assessment, CreateAssessmentPayload } from "../types/assessment";
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
+if (!apiBaseUrl) {
+  throw new Error("Missing VITE_API_BASE_URL. Define it in your frontend environment.");
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api",
+  baseURL: apiBaseUrl,
 });
 
 api.interceptors.request.use((config) => {

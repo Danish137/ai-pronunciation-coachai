@@ -2,8 +2,10 @@
 .env.*
 !.env.example
 __pycache__/
+**/__pycache__/
 *.pyc
 .pytest_cache/
+.ruff_cache/
 .venv/
 venv/
 backend/.venv/
@@ -20,4 +22,11 @@ data/
 03-Implementation-Plan.md
 04-Decision-Log.md
 docs/*.md
-frontend/README.md
+.vscode/
+*.log
+debug-server*.log
+temp-sample.wav
+tmp_*.py
+AssessmentResponse.json
+azureraw.json
+technical_info.md
