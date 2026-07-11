@@ -22,6 +22,8 @@ data/
 03-Implementation-Plan.md
 04-Decision-Log.md
 docs/*.md
+!docs/privacy-notice.md
+!docs/dpdp-compliance.md
 .vscode/
 *.log
 debug-server*.log
